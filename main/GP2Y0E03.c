@@ -19,6 +19,16 @@ void DS_init(char sladress)
      gpio_set_direction(VDD_PIN, GPIO_MODE_OUTPUT);
      gpio_set_level(VDD_PIN, 1);//0
 
+     gpio_reset_pin(23);
+    /* Set the GPIO as a push/pull output */
+     gpio_set_direction(23, GPIO_MODE_OUTPUT);
+     gpio_set_level(23, 1);//0
+
+
+     gpio_reset_pin(4);
+    /* Set the GPIO as a push/pull output */
+     gpio_set_direction(4, GPIO_MODE_OUTPUT);
+     gpio_set_level(4, 1);//0
    // VDAC8_Start();
    // VDAC8_SetValue(0);
     /*     DS_beginwrite(sladress);
@@ -58,9 +68,9 @@ void DS_write(uint8_t sensor_addr, uint8_t reg_addr, uint8_t  reag_data)
   
 ret = i2c_esp32_write(I2C_MASTER_NUM, sensor_addr, reg_addr, reag_data, 1);
 
-#if DEBUG_I2C
+//#if DEBUG_I2C
          if (ret == ESP_ERR_TIMEOUT) {
-            printf( "I2C Timeout");
+            printf( "I2C Timeout\n");
         } else if (ret == ESP_OK) {
 
             printf("*****I2C write******\n");
@@ -69,7 +79,7 @@ ret = i2c_esp32_write(I2C_MASTER_NUM, sensor_addr, reg_addr, reag_data, 1);
         } else {
             printf( " No ack, sensor not connected...skip...\n");
         }
- #endif DEBUG_I2C
+ //#endif DEBUG_I2C
 }
 
 void e_fuse_stage1()
@@ -77,6 +87,7 @@ void e_fuse_stage1()
     DS_write(GP2Y0E, 0xEC, 0xFF);
     //VDAC8_SetValue(206);
     gpio_set_level(VDD_PIN, 1);
+
 }
 
 /*
@@ -125,7 +136,7 @@ void e_fuse_stage5()
 
     DS_write(GP2Y0E, 0xCA, 0x01);
     //CyDelay(500);
-    vTaskDelay(50 / portTICK_PERIOD_MS);
+    vTaskDelay(0.05 / portTICK_PERIOD_MS);
 }
 
 /*
@@ -139,6 +150,7 @@ void e_fuse_stage6()
     DS_write(GP2Y0E, 0xCA, 0x00);
     //VDAC8_SetValue(0);
     gpio_set_level(VDD_PIN, 0);
+
 }
 
 /*
@@ -207,6 +219,7 @@ void e_fuse_stage10_1_1()
     //VDAC8_SetValue(206);
     //_vpp_on();
     gpio_set_level(VDD_PIN, 1);
+
 }
 
 /*
@@ -253,7 +266,7 @@ void e_fuse_stage10_5_1()
 
     DS_write(GP2Y0E, 0xCA, 0x01);
     //CyDelayUs(500);
-    vTaskDelay(50 / portTICK_PERIOD_MS);
+    vTaskDelay(0.05 / portTICK_PERIOD_MS);
 }
 
 /*
@@ -267,7 +280,8 @@ void e_fuse_stage10_6_1()
     DS_write(GP2Y0E, 0xCA, 0x00);
     //VDAC8_SetValue(0);
     //_vpp_off();
-    gpio_set_level(VDD_PIN, 0);
+   gpio_set_level(VDD_PIN, 0);
+
 }
 
 /*
@@ -283,6 +297,7 @@ void e_fuse_stage10_1_2()
     //VDAC8_SetValue(206);
     //_vpp_on();
     gpio_set_level(VDD_PIN, 1);
+
 }
 
 /*
@@ -329,7 +344,7 @@ void e_fuse_stage10_5_2()
 
     DS_write(GP2Y0E, 0xCA, 0x01);
     //CyDelayUs(500);
-    vTaskDelay(50 / portTICK_PERIOD_MS);
+    vTaskDelay(0.05 / portTICK_PERIOD_MS);
 }
 
 /*
@@ -344,6 +359,7 @@ void e_fuse_stage10_6_2()
     DS_write(GP2Y0E, 0xCA, 0x00);
     //VDAC8_SetValue(0);
     gpio_set_level(VDD_PIN, 0);
+
 }
 
 /*
@@ -380,24 +396,24 @@ void e_fuse_stage10_8()
  */
 void e_fuse_stage10_9()
 {
-    char buffer[255] = {};
+    //char buffer[255] = {};
     DS_write(GP2Y0E, 0xEC, 0xFF);
     DS_write(GP2Y0E, 0xEF, 0x03);
-    const uint8_t bit_replacemnt_18 = DS_read(GP2Y0E, 0x18);
-    const uint8_t bit_replacemnt_19 = DS_read(GP2Y0E, 0x19);
-    sprintf(buffer, "Check 0x18 => %d\r\n", bit_replacemnt_18);
-    printf(buffer);
-    sprintf(buffer, "Check 0x19 => %d\r\n", bit_replacemnt_19);
-    printf(buffer);
+     uint8_t bit_replacemnt_18 = DS_read(GP2Y0E, 0x18);
+     uint8_t bit_replacemnt_19 = DS_read(GP2Y0E, 0x19);
+    //sprintf(buffer, "Check 0x18 => %d\r\n", bit_replacemnt_18);
+    printf("Check 0x18 => %d\r\n", bit_replacemnt_18);
+    //sprintf(buffer, "Check 0x19 => %d\r\n", bit_replacemnt_19);
+    printf("Check 0x19 => %d\r\n", bit_replacemnt_19);
     if (bit_replacemnt_18 == 0x82 && bit_replacemnt_19 == 0x00)
     {
-        sprintf(buffer, "Bit Replacement (stage 10) is SUCCESSFUL\r\n");
-        printf(buffer);
+        //sprintf(buffer, "Bit Replacement (stage 10) is SUCCESSFUL\r\n");
+        printf("Bit Replacement (stage 10) is SUCCESSFUL\r\n");
     }
     else
     {
-        sprintf(buffer, "Bit Replacement (stage 10) is FAILURE\r\n");
-        printf(buffer);
+       // sprintf(buffer, "Bit Replacement (stage 10) is FAILURE\r\n");
+        printf( "Bit Replacement (stage 10) is FAILURE\r\n");
     }
 }
 
@@ -416,8 +432,9 @@ void Ds_change(uint8_t new_address)
     }
     ///VDAC8_SetValue(0);
     gpio_set_level(VDD_PIN, 0);
+
     //CyDelayUs(500);
-    vTaskDelay(50 / portTICK_PERIOD_MS);
+    vTaskDelay(0.05 / portTICK_PERIOD_MS);
     e_fuse_stage1();
     printf("stage1\r\n");
     e_fuse_stage2();
@@ -457,32 +474,36 @@ void Ds_change(uint8_t new_address)
 
     printf(buffer);
 }
-/* 
-unsigned char DS_get_data(char sladress)
+ 
+float DS_get_data(char sladress)
 {
-    unsigned char distance_cm, datai2c[2] = {0, 0};
-    DS_beginwrite(sladress);             // inicia comunicacion
-    I2C_MasterWriteByte(DISTANCE_ADDR1); //Pone direccion de memoria que quiere leer
-    I2C_MasterSendStop();
-    DS_beginread(sladress);
-    datai2c[0] = I2C_MasterReadByte(I2C_NAK_DATA); //captura el dato 1 con nak salta un registro para leer el siguiente espacio de memoria
-    datai2c[1] = I2C_MasterReadByte(I2C_NAK_DATA); // lee el siguiente espacio de memoria
-    I2C_MasterSendStop();
-    distance_cm = (data
-    i2c[0] * 16 + datai2c[1]) / 64; //calculo de distancia
-    return distance_cm;
+    
+     int distance_cm,shift_dist, datai2c[2] = {0, 0};
+    float distance_cm2;
+  
+    datai2c[0] = DS_read(sladress, DISTANCE_ADDR1);
+    datai2c[1] = DS_read(sladress, DISTANCE_ADDR2);
+    shift_dist = DS_read(sladress, 0x35);
+    distance_cm2 = (datai2c[0] * 16 + datai2c[1]) /16/2^shift_dist; //calculo de distancia
+      //(((uint16_t) data[0] << 4) + (data[1] & 0x0f)) / 16 / 4;
+
+            printf("*****I2C distancia******\n");
+            printf("sensor_addr: %f\n", distance_cm2);
+            printf("*******************\n");
+    return distance_cm2;
+    
 }
 void DS_range(char adress, char distance)
 {
-    DS_beginwrite(adress);
-    I2C_MasterWriteByte(SHIFT_ADDR);
-    if (distance == 0x80)
+    //DS_write( adress,  SHIFT_ADDR,  0x01);
+
+    if (distance == 0x01)// 128cm
     {
-        I2C_MasterWriteByte(0x01);
+    DS_write( adress,  SHIFT_ADDR,  0x01);
     }
-    else
+    else// 64 cm
     {
-        I2C_MasterWriteByte(0x02);
+    DS_write( adress,  SHIFT_ADDR,  0x02);
     }
-    I2C_MasterSendStop();
-} */
+ 
+} 

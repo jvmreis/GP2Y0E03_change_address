@@ -25,11 +25,11 @@
 #define PEAK_EDGE_ADDR  0xFA // B     
 
 #define E_FUSE_ADDR  0xC8 
-#define VDD_PIN 2
-#define DEBUG_I2C 1
+#define VDD_PIN 22
+#define DEBUG_I2C 0
 
 void DS_init(char sladress);    
-unsigned char DS_get_data(char sladress);    
+float DS_get_data(char sladress);    
 void Ds_change( uint8_t new_address);
 void DS_range(char adress,char distance);
 

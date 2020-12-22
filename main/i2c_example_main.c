@@ -90,33 +90,54 @@ static void disp_buf(uint8_t *buf, int len)
 static void i2c_test_task(void *arg)
 {
     int i = 0;
-    int ret;
+    esp_err_t ret=ESP_OK;
     uint32_t task_idx = (uint32_t)arg;
     uint8_t *data = (uint8_t *)malloc(DATA_LENGTH);
     uint8_t *data_wr = (uint8_t *)malloc(DATA_LENGTH);
     uint8_t *data_rd = (uint8_t *)malloc(DATA_LENGTH);
     uint8_t sensor_data_h, sensor_data_l;
     int cnt = 0;
-    while (1) {
-        ESP_LOGI(TAG, "TASK[%d] test cnt: %d", task_idx, cnt++);
-      //ret = i2c_master_sensor_test(I2C_MASTER_NUM, &sensor_data_h, &sensor_data_l);
-           Ds_change(0x01);
+        uint8_t adrees = 0;
+// double v;
 
-        ret = i2c_esp32_read(I2C_MASTER_NUM, 0x80,0xC8,&sensor_data_h,1);
+    while (1) {
+        ESP_LOGI(TAG, "TASK[%d] test cnt: %d", adrees, cnt++);
+         gpio_set_level(4, 1);//0
+         gpio_set_level(23, 1);//0
+        
+            //Ds_change(0x01);
+
+
+      //ret = i2c_master_sensor_test(I2C_MASTER_NUM, &sensor_data_h, &sensor_data_l);
+          // Ds_change(0x01);
+        ret = i2c_esp32_read(I2C_MASTER_NUM, 0x08,0xC8,&sensor_data_h,1);
+        
+        /*if(cnt>127){
+            cnt=0;
+        }*/
+
         xSemaphoreTake(print_mux, portMAX_DELAY);
         if (ret == ESP_ERR_TIMEOUT) {
             ESP_LOGE(TAG, "I2C Timeout");
+            
         } else if (ret == ESP_OK) {
             printf("*******************\n");
-            printf("TASK[%d]  MASTER READ SENSOR( IR )\n", task_idx);
+            printf("TASK[%d]  MASTER READ SENSOR( IR 0x10 )\n", task_idx);
             printf("*******************\n");
             printf("data_h: %02x\n", sensor_data_h);
 
         } else {
             ESP_LOGW(TAG, "%s: No ack, sensor not connected...skip...", esp_err_to_name(ret));
         }
+       
+      /* v= */DS_get_data(0x08);
+/*
+                    printf("*****I2C distancia******\n");
+            printf("sensor_addr: %g\n", v);
+            printf("*******************\n");*/
+
         xSemaphoreGive(print_mux);
-        vTaskDelay((DELAY_TIME_BETWEEN_ITEMS_MS * (task_idx + 1)) / portTICK_RATE_MS);
+        vTaskDelay((1000 * (task_idx + 1)) / portTICK_RATE_MS);
         //---------------------------------------------------
     }
     vSemaphoreDelete(print_mux);
@@ -128,6 +149,11 @@ void app_main(void)
     print_mux = xSemaphoreCreateMutex();
     ESP_ERROR_CHECK(i2c_master_init());
     DS_init(0x00);
+
+    DS_range(0x08,0x01);
+
+   // Ds_change(0x01);
+
     //ponteiro de função,label(reconhecimento no debug) ,espaço de memoria,ponteiro de precarregamento,prioridade,rando da task (id)
     //prioridade menori indice menor prioridade , maior indicie maior prioridade
 

@@ -71,7 +71,7 @@
     ret = i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_RATE_MS);
     i2c_cmd_link_delete(cmd);
     if (ret != ESP_OK) {
-        return ret;
+        //return ret;
     }
     vTaskDelay(30 / portTICK_RATE_MS);
     cmd = i2c_cmd_link_create();
@@ -87,33 +87,8 @@
 
  esp_err_t i2c_esp32_read(i2c_port_t i2c_num,uint8_t sensor_addr,uint8_t reg_addr, uint8_t * reag_data,uint8_t size)
  {
-int ret;
 
-//uint8_t data_read=0x00;
-
-
-//ret= i2c_master_write_slave( i2c_num,sensor_addr, reg_addr, 1);
-/*         if (ret == ESP_ERR_TIMEOUT) {
-            printf( "I2C Timeout");
-        } else if (ret == ESP_OK) {
-            printf("******ESP_OK*******\n");
-        } else {
-            printf( "%s: No ack, sensor not connected...skip...", esp_err_to_name(ret));
-        } */
-            //vTaskDelay(30 / portTICK_RATE_MS);
-
-//ret= i2c_master_read_slave( i2c_num, sensor_addr,&data_read, size);
-/*         if (ret == ESP_ERR_TIMEOUT) {
-            printf( "I2C Timeout");
-        } else if (ret == ESP_OK) {
-            printf("******ESP_OK*******\n");
-
-        } else {
-            printf( "%s: No ack, sensor not connected...skip...", esp_err_to_name(ret));
-        } */
-        // *reag_data = data_read;
-
-       // return ret;
+esp_err_t ret;
 
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);
@@ -131,9 +106,10 @@ int ret;
     i2c_master_write_byte(cmd, sensor_addr << 1 | READ_BIT, ACK_CHECK_EN);
     i2c_master_read_byte(cmd, reag_data, ACK_VAL);
     i2c_master_stop(cmd);
+    ret=ESP_OK;
     ret = i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_RATE_MS);
     i2c_cmd_link_delete(cmd);
-    return ret;
+    return ESP_OK;
 }
 
  esp_err_t i2c_esp32_write(i2c_port_t i2c_num,uint8_t sensor_addr,uint8_t reg_addr, uint8_t  reag_data,uint8_t size)
@@ -147,7 +123,7 @@ int ret;
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     i2c_master_start(cmd);
     i2c_master_write_byte(cmd, (sensor_addr << 1) | WRITE_BIT, ACK_CHECK_EN);
-    i2c_master_write(cmd, s_tx_buf, size, ACK_CHECK_EN);
+    i2c_master_write(cmd, s_tx_buf, size+1, ACK_CHECK_EN);
     i2c_master_stop(cmd);
     esp_err_t ret = i2c_master_cmd_begin(i2c_num, cmd, 1000 / portTICK_RATE_MS);
     i2c_cmd_link_delete(cmd);
