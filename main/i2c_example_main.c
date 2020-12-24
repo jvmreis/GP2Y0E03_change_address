@@ -13,110 +13,49 @@
 */
 #include <stdio.h>
 #include "esp_log.h"
-#include "driver/i2c.h"
+
+//#include "driver/i2c.h"
 #include "sdkconfig.h"
+
 #include "GP2Y0E03.h"
 #include "I2C.h"
 
+#include "PWM.h"
+
+#include "GPIO.h"
+static xQueueHandle gpio_evt_queue = NULL;
+
 static const char *TAG = "i2c-example";
 
-#define _I2C_NUMBER(num) I2C_NUM_##num
-#define I2C_NUMBER(num) _I2C_NUMBER(num)
-
-#define DATA_LENGTH 512                  /*!< Data buffer length of test buffer */
-#define RW_TEST_LENGTH 128               /*!< Data length for r/w test, [0,DATA_LENGTH] */
-#define DELAY_TIME_BETWEEN_ITEMS_MS 1000 /*!< delay time between different test items */
-
-#define I2C_SLAVE_SCL_IO CONFIG_I2C_SLAVE_SCL               /*!< gpio number for i2c slave clock */
-#define I2C_SLAVE_SDA_IO CONFIG_I2C_SLAVE_SDA               /*!< gpio number for i2c slave data */
-#define I2C_SLAVE_NUM I2C_NUMBER(CONFIG_I2C_SLAVE_PORT_NUM) /*!< I2C port number for slave dev */
-#define I2C_SLAVE_TX_BUF_LEN (2 * DATA_LENGTH)              /*!< I2C slave tx buffer size */
-#define I2C_SLAVE_RX_BUF_LEN (2 * DATA_LENGTH)              /*!< I2C slave rx buffer size */
-
-#define I2C_MASTER_SCL_IO CONFIG_I2C_MASTER_SCL               /*!< gpio number for I2C master clock */
-#define I2C_MASTER_SDA_IO CONFIG_I2C_MASTER_SDA               /*!< gpio number for I2C master data  */
-#define I2C_MASTER_NUM I2C_NUMBER(CONFIG_I2C_MASTER_PORT_NUM) /*!< I2C port number for master dev */
-#define I2C_MASTER_FREQ_HZ CONFIG_I2C_MASTER_FREQUENCY        /*!< I2C master clock frequency */
-#define I2C_MASTER_TX_BUF_DISABLE 0                           /*!< I2C master doesn't need buffer */
-#define I2C_MASTER_RX_BUF_DISABLE 0                           /*!< I2C master doesn't need buffer */
-
-#define BH1750_SENSOR_ADDR CONFIG_BH1750_ADDR   /*!< slave address for BH1750 sensor */
-#define BH1750_CMD_START CONFIG_BH1750_OPMODE   /*!< Operation mode */
-#define ESP_SLAVE_ADDR CONFIG_I2C_SLAVE_ADDRESS /*!< ESP32 slave address, you can set any 7bit value */
-#define WRITE_BIT I2C_MASTER_WRITE              /*!< I2C master write */
-#define READ_BIT I2C_MASTER_READ                /*!< I2C master read */
-#define ACK_CHECK_EN 0x1                        /*!< I2C master will check ack from slave*/
-#define ACK_CHECK_DIS 0x0                       /*!< I2C master will not check ack from slave */
-#define ACK_VAL 0x0                             /*!< I2C ack value */
 #define NACK_VAL 0x1                            /*!< I2C nack value */
 
 SemaphoreHandle_t print_mux = NULL;
 
 
-/**
- * @brief i2c master initialization
- *
-static esp_err_t i2c_master_init(void)
-{
-    int i2c_master_port = I2C_MASTER_NUM;
-    i2c_config_t conf;
-    conf.mode = I2C_MODE_MASTER;
-    conf.sda_io_num = I2C_MASTER_SDA_IO;
-    conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
-    conf.scl_io_num = I2C_MASTER_SCL_IO;
-    conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
-    conf.master.clk_speed = I2C_MASTER_FREQ_HZ;
-    i2c_param_config(i2c_master_port, &conf);
-    return i2c_driver_install(i2c_master_port, conf.mode, I2C_MASTER_RX_BUF_DISABLE, I2C_MASTER_TX_BUF_DISABLE, 0);
-}*/
-
-
-
-/**
- * @brief test function to show buffer
- */
-static void disp_buf(uint8_t *buf, int len)
-{
-    int i;
-    for (i = 0; i < len; i++) {
-        printf("%02x ", buf[i]);
-        if ((i + 1) % 16 == 0) {
-            printf("\n");
-        }
-    }
-    printf("\n");
-}
-
 static void i2c_test_task(void *arg)
 {
-    int i = 0;
+    
     esp_err_t ret=ESP_OK;
     uint32_t task_idx = (uint32_t)arg;
     uint8_t *data = (uint8_t *)malloc(DATA_LENGTH);
-    uint8_t *data_wr = (uint8_t *)malloc(DATA_LENGTH);
-    uint8_t *data_rd = (uint8_t *)malloc(DATA_LENGTH);
+    
+    uint8_t adrees = 0;
     uint8_t sensor_data_h, sensor_data_l;
     int cnt = 0;
-        uint8_t adrees = 0;
+   
 // double v;
 
     while (1) {
+
         ESP_LOGI(TAG, "TASK[%d] test cnt: %d", adrees, cnt++);
+
          gpio_set_level(4, 1);//0
          gpio_set_level(23, 1);//0
         
-            //Ds_change(0x01);
-
-
-      //ret = i2c_master_sensor_test(I2C_MASTER_NUM, &sensor_data_h, &sensor_data_l);
-          // Ds_change(0x01);
         ret = i2c_esp32_read(I2C_MASTER_NUM, 0x08,0xC8,&sensor_data_h,1);
         
-        /*if(cnt>127){
-            cnt=0;
-        }*/
-
         xSemaphoreTake(print_mux, portMAX_DELAY);
+
         if (ret == ESP_ERR_TIMEOUT) {
             ESP_LOGE(TAG, "I2C Timeout");
             
@@ -132,7 +71,7 @@ static void i2c_test_task(void *arg)
        
       /* v= */DS_get_data(0x08);
 /*
-                    printf("*****I2C distancia******\n");
+            printf("*****I2C distancia******\n");
             printf("sensor_addr: %g\n", v);
             printf("*******************\n");*/
 
@@ -144,22 +83,126 @@ static void i2c_test_task(void *arg)
     vTaskDelete(NULL);
 }
 
+/**
+ * @brief Configure MCPWM module for brushed dc motor
+ */
+static void mcpwm_example_brushed_motor_control(void *arg)
+{
+    //1. mcpwm gpio initialization
+    mcpwm_example_gpio_initialize();
+
+    //2. initial mcpwm configuration
+    printf("Configuring Initial Parameters of mcpwm...\n");
+    mcpwm_config_t pwm_config;
+    pwm_config.frequency = 1000;    //frequency = 500Hz,
+    pwm_config.cmpr_a = 0;    //duty cycle of PWMxA = 0
+    pwm_config.cmpr_b = 0;    //duty cycle of PWMxb = 0
+    pwm_config.counter_mode = MCPWM_UP_COUNTER;
+    pwm_config.duty_mode = MCPWM_DUTY_MODE_0;
+    mcpwm_init(MCPWM_UNIT_0, MCPWM_TIMER_0, &pwm_config);    //Configure PWM0A & PWM0B with above settings
+    while (1) {
+        printf("brushed_motor_forward\n");
+        brushed_motor_forward(MCPWM_UNIT_0, MCPWM_TIMER_0, 50.0);
+        vTaskDelay(2000 / portTICK_RATE_MS);
+        printf("brushed_motor_backward\n");
+        brushed_motor_backward(MCPWM_UNIT_0, MCPWM_TIMER_0, 30.0);
+        vTaskDelay(2000 / portTICK_RATE_MS);
+        printf("brushed_motor_stop\n");    
+        brushed_motor_stop(MCPWM_UNIT_0, MCPWM_TIMER_0);
+        vTaskDelay(2000 / portTICK_RATE_MS);
+    }
+}
+ void IRAM_ATTR gpio_isr_handler(void* arg)
+{
+    uint32_t gpio_num = (uint32_t) arg;
+    xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
+}
+static void gpio_task_example(void* arg)
+{
+    uint32_t io_num;
+        printf("gpio_task_example...\n");
+
+    while (1) {
+        if(xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
+            printf("GPIO[%d] intr, val: %d\n", io_num, gpio_get_level(io_num));
+        }
+    }
+
+    vTaskDelete(NULL);
+}
+
 void app_main(void)
 {
     print_mux = xSemaphoreCreateMutex();
     ESP_ERROR_CHECK(i2c_master_init());
+
     DS_init(0x00);
 
     DS_range(0x08,0x01);
 
-   // Ds_change(0x01);
+    // Ds_change(0x01);
+    xTaskCreate(i2c_test_task, "i2c_test_task_0", 1024 * 2, (void *)0, 5, NULL);
+    
+   // gpio_init_driver(gpio_isr_t &gpio_isr_handler);
+       gpio_config_t io_conf;
+
+    //disable interrupt
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    //set as output mode
+    io_conf.mode = GPIO_MODE_OUTPUT;
+    //bit mask of the pins that you want to set,e.g.GPIO18/19
+    io_conf.pin_bit_mask = GPIO_OUTPUT_PIN_SEL;
+    //disable pull-down mode
+    io_conf.pull_down_en = 0;
+    //disable pull-up mode
+    io_conf.pull_up_en = 0;
+    //configure GPIO with the given settings
+    gpio_config(&io_conf);
+
+    gpio_set_level(GPIO_OUTPUT_IO_0, 1);
+
+    //interrupt of rising edge
+    io_conf.intr_type = GPIO_INTR_POSEDGE;
+    //bit mask of the pins, use GPIO4/5 here
+    io_conf.pin_bit_mask = GPIO_INPUT_PIN_SEL;
+    //set as input mode
+    io_conf.mode = GPIO_MODE_INPUT;
+    //enable pull-up mode
+    io_conf.pull_up_en = 1;
+    gpio_config(&io_conf);
+
+    //change gpio intrrupt type for one pin
+    gpio_set_intr_type(GPIO_INPUT_IO_0, GPIO_INTR_ANYEDGE);
+
+    //install gpio isr service
+    gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
+    //hook isr handler for specific gpio pin
+    gpio_isr_handler_add(GPIO_INPUT_IO_0, gpio_isr_handler, (void*) GPIO_INPUT_IO_0);
+    //hook isr handler for specific gpio pin
+    gpio_isr_handler_add(GPIO_INPUT_IO_1, gpio_isr_handler, (void*) GPIO_INPUT_IO_1);
+
+    //remove isr handler for gpio number.
+    gpio_isr_handler_remove(GPIO_INPUT_IO_0);
+    //hook isr handler for specific gpio pin again
+    gpio_isr_handler_add(GPIO_INPUT_IO_0, gpio_isr_handler, (void*) GPIO_INPUT_IO_0);
+
+    printf("Minimum free heap size: %d bytes\n", esp_get_minimum_free_heap_size());
+
+   //create a queue to handle gpio event from isr
+    gpio_evt_queue = xQueueCreate(10, sizeof(uint32_t));
+    //start gpio task
+    xTaskCreate(gpio_task_example, "gpio_task_example", 2048, NULL, 10, NULL);
+
+
 
     //ponteiro de função,label(reconhecimento no debug) ,espaço de memoria,ponteiro de precarregamento,prioridade,rando da task (id)
     //prioridade menori indice menor prioridade , maior indicie maior prioridade
 
     //xTaskCreate core randomico
-    
-    xTaskCreate(i2c_test_task, "i2c_test_task_0", 1024 * 2, (void *)0, 10, NULL);
+
+
+    printf("Testing brushed motor...\n");
+    xTaskCreate(mcpwm_example_brushed_motor_control, "mcpwm_examlpe_brushed_motor_control", 4096, NULL, 4, NULL);
 
 
      //ponteiro de função,label(reconhecimento no debug) ,espaço de memoria,ponteiro de precarregamento,prioridade,rando da task (id),core
