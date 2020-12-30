@@ -13,8 +13,6 @@
 */
 #include <stdio.h>
 #include "esp_log.h"
-
-//#include "driver/i2c.h"
 #include "sdkconfig.h"
 
 #include "GP2Y0E03.h"
@@ -23,6 +21,9 @@
 #include "PWM.h"
 
 #include "GPIO.h"
+
+#include "ADC.h"
+
 static xQueueHandle gpio_evt_queue = NULL;
 
 static const char *TAG = "i2c-example";
@@ -111,6 +112,7 @@ static void mcpwm_example_brushed_motor_control(void *arg)
         brushed_motor_stop(MCPWM_UNIT_0, MCPWM_TIMER_0);
         vTaskDelay(2000 / portTICK_RATE_MS);
     }
+    vTaskDelete(NULL);
 }
  void IRAM_ATTR gpio_isr_handler(void* arg)
 {
@@ -131,6 +133,48 @@ static void gpio_task_example(void* arg)
     vTaskDelete(NULL);
 }
 
+static void adc_task(void *arg)
+{
+esp_adc_cal_characteristics_t *adc_chars;
+
+    //Check if Two Point or Vref are burned into eFuse
+    check_efuse();
+
+    //Configure ADC
+    if (unit == ADC_UNIT_1) {
+        adc1_config_width(width);
+        adc1_config_channel_atten(channel, atten);
+    } else {
+        adc2_config_channel_atten((adc2_channel_t)channel, atten);
+    }
+
+    //Characterize ADC
+    adc_chars = calloc(1, sizeof(esp_adc_cal_characteristics_t));
+    esp_adc_cal_value_t val_type = esp_adc_cal_characterize(unit, atten, width, DEFAULT_VREF, adc_chars);
+    print_char_val_type(val_type);
+
+    //Continuously sample ADC1
+    while (1) {
+        uint32_t adc_reading = 0;
+        //Multisampling
+        for (int i = 0; i < NO_OF_SAMPLES; i++) {
+            if (unit == ADC_UNIT_1) {
+                adc_reading += adc1_get_raw((adc1_channel_t)channel);
+            } else {
+                int raw;
+                adc2_get_raw((adc2_channel_t)channel, width, &raw);
+                adc_reading += raw;
+            }
+        }
+        adc_reading /= NO_OF_SAMPLES;
+        //Convert adc_reading to voltage in mV
+        uint32_t voltage = esp_adc_cal_raw_to_voltage(adc_reading, adc_chars);
+        printf("Raw: %d\tVoltage: %dmV\n", adc_reading, voltage);
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+vTaskDelete(NULL);
+}
+
 void app_main(void)
 {
     print_mux = xSemaphoreCreateMutex();
@@ -144,32 +188,7 @@ void app_main(void)
     xTaskCreate(i2c_test_task, "i2c_test_task_0", 1024 * 2, (void *)0, 5, NULL);
     
    // gpio_init_driver(gpio_isr_t &gpio_isr_handler);
-       gpio_config_t io_conf;
-
-    //disable interrupt
-    io_conf.intr_type = GPIO_INTR_DISABLE;
-    //set as output mode
-    io_conf.mode = GPIO_MODE_OUTPUT;
-    //bit mask of the pins that you want to set,e.g.GPIO18/19
-    io_conf.pin_bit_mask = GPIO_OUTPUT_PIN_SEL;
-    //disable pull-down mode
-    io_conf.pull_down_en = 0;
-    //disable pull-up mode
-    io_conf.pull_up_en = 0;
-    //configure GPIO with the given settings
-    gpio_config(&io_conf);
-
-    gpio_set_level(GPIO_OUTPUT_IO_0, 1);
-
-    //interrupt of rising edge
-    io_conf.intr_type = GPIO_INTR_POSEDGE;
-    //bit mask of the pins, use GPIO4/5 here
-    io_conf.pin_bit_mask = GPIO_INPUT_PIN_SEL;
-    //set as input mode
-    io_conf.mode = GPIO_MODE_INPUT;
-    //enable pull-up mode
-    io_conf.pull_up_en = 1;
-    gpio_config(&io_conf);
+    gpio_config_pin();
 
     //change gpio intrrupt type for one pin
     gpio_set_intr_type(GPIO_INPUT_IO_0, GPIO_INTR_ANYEDGE);
@@ -181,12 +200,7 @@ void app_main(void)
     //hook isr handler for specific gpio pin
     gpio_isr_handler_add(GPIO_INPUT_IO_1, gpio_isr_handler, (void*) GPIO_INPUT_IO_1);
 
-    //remove isr handler for gpio number.
-    gpio_isr_handler_remove(GPIO_INPUT_IO_0);
-    //hook isr handler for specific gpio pin again
-    gpio_isr_handler_add(GPIO_INPUT_IO_0, gpio_isr_handler, (void*) GPIO_INPUT_IO_0);
-
-    printf("Minimum free heap size: %d bytes\n", esp_get_minimum_free_heap_size());
+    //printf("Minimum free heap size: %d bytes\n", esp_get_minimum_free_heap_size());
 
    //create a queue to handle gpio event from isr
     gpio_evt_queue = xQueueCreate(10, sizeof(uint32_t));
@@ -204,6 +218,9 @@ void app_main(void)
     printf("Testing brushed motor...\n");
     xTaskCreate(mcpwm_example_brushed_motor_control, "mcpwm_examlpe_brushed_motor_control", 4096, NULL, 4, NULL);
 
+
+
+    xTaskCreate(adc_task, "adc_task", 1024 * 2, (void *)0, 5, NULL);
 
      //ponteiro de função,label(reconhecimento no debug) ,espaço de memoria,ponteiro de precarregamento,prioridade,rando da task (id),core
     

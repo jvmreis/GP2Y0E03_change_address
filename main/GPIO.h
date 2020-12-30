@@ -29,3 +29,4 @@
 #define ESP_INTR_FLAG_DEFAULT 0
 
 void gpio_init_driver(gpio_isr_t * gpio_isr_handler);
+void gpio_config_pin(void);
