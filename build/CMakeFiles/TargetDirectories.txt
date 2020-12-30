@@ -361,6 +361,7 @@ C:/ESP32/Projetos/i2c_self_test/build/esp-idf/bootloader/CMakeFiles/install/loca
 C:/ESP32/Projetos/i2c_self_test/build/esp-idf/bootloader/CMakeFiles/edit_cache.dir
 C:/ESP32/Projetos/i2c_self_test/build/esp-idf/bootloader/CMakeFiles/rebuild_cache.dir
 C:/ESP32/Projetos/i2c_self_test/build/esp-idf/bootloader/CMakeFiles/install/strip.dir
+C:/ESP32/Projetos/i2c_self_test/build/esp-idf/bt/CMakeFiles/__idf_bt.dir
 C:/ESP32/Projetos/i2c_self_test/build/esp-idf/bt/CMakeFiles/install/local.dir
 C:/ESP32/Projetos/i2c_self_test/build/esp-idf/bt/CMakeFiles/install.dir
 C:/ESP32/Projetos/i2c_self_test/build/esp-idf/bt/CMakeFiles/edit_cache.dir

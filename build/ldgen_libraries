@@ -35,6 +35,7 @@ C:/ESP32/Projetos/i2c_self_test/build/esp-idf/newlib/libnewlib.a
 C:/ESP32/Projetos/i2c_self_test/build/esp-idf/cxx/libcxx.a
 C:/ESP32/Projetos/i2c_self_test/build/esp-idf/app_trace/libapp_trace.a
 C:/ESP32/Projetos/i2c_self_test/build/esp-idf/asio/libasio.a
+C:/ESP32/Projetos/i2c_self_test/build/esp-idf/bt/libbt.a
 C:/ESP32/Projetos/i2c_self_test/build/esp-idf/cbor/libcbor.a
 C:/ESP32/Projetos/i2c_self_test/build/esp-idf/unity/libunity.a
 C:/ESP32/Projetos/i2c_self_test/build/esp-idf/cmock/libcmock.a
