@@ -33,6 +33,17 @@ float DS_get_data(char sladress);
 void Ds_change( uint8_t new_address);
 void DS_range(char adress,char distance);
 
+    struct Sdistance
+{
+        uint8_t distance_1;
+        uint8_t distance_2;
+        uint8_t distance_3;
+        uint8_t distance_4;
+        uint8_t distance_5;
+        uint8_t distance_6;
+
+};
+
 #ifdef	__cplusplus
 }
 #endif /* __cplusplus */

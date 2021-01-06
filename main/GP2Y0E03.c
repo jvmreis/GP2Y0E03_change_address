@@ -487,9 +487,9 @@ float DS_get_data(char sladress)
     distance_cm2 = (datai2c[0] * 16 + datai2c[1]) /16/2^shift_dist; //calculo de distancia
       //(((uint16_t) data[0] << 4) + (data[1] & 0x0f)) / 16 / 4;
 
-            printf("*****I2C distancia******\n");
+          /*  printf("*****I2C distancia******\n");
             printf("sensor_addr: %f\n", distance_cm2);
-            printf("*******************\n");
+            printf("*******************\n");*/
     return distance_cm2;
     
 }

@@ -28,7 +28,18 @@
 
 static xQueueHandle gpio_evt_queue = NULL;
 
+static xQueueHandle distance_send_evt_queue = NULL;
+static xQueueHandle ble_recive_evt_queue = NULL;
+
+
 static const char *TAG = "i2c-example";
+
+TaskHandle_t taskI2C = NULL;
+TaskHandle_t taskADC = NULL;
+TaskHandle_t taskPWM = NULL;
+TaskHandle_t taskGPIO = NULL;
+
+
 
 #define NACK_VAL 0x1                            /*!< I2C nack value */
 
@@ -49,14 +60,16 @@ static void i2c_test_task(void *arg)
 {
     
     esp_err_t ret=ESP_OK;
+
     uint32_t task_idx = (uint32_t)arg;
+
     uint8_t *data = (uint8_t *)malloc(DATA_LENGTH);
     
     uint8_t adrees = 0;
     uint8_t sensor_data_h, sensor_data_l;
     int cnt = 0;
    
-// double v;
+ struct Sdistance distance_ir;
 
     while (1) {
 
@@ -65,9 +78,11 @@ static void i2c_test_task(void *arg)
          gpio_set_level(4, 1);//0
          gpio_set_level(23, 1);//0
         
-        ret = i2c_esp32_read(I2C_MASTER_NUM, 0x08,0xC8,&sensor_data_h,1);
         
         xSemaphoreTake(print_mux, portMAX_DELAY);
+/*
+        ret = i2c_esp32_read(I2C_MASTER_NUM, 0x08,0xC8,&sensor_data_h,1);
+
 
         if (ret == ESP_ERR_TIMEOUT) {
             ESP_LOGE(TAG, "I2C Timeout");
@@ -80,13 +95,24 @@ static void i2c_test_task(void *arg)
 
         } else {
             ESP_LOGW(TAG, "%s: No ack, sensor not connected...skip...", esp_err_to_name(ret));
-        }
+        }*/
        
-      /* v= */DS_get_data(0x08);
-/*
+       distance_ir.distance_1 =DS_get_data(0x08);
+       distance_ir.distance_2 =1;//DS_get_data(0x08);
+       distance_ir.distance_3 =2;//DS_get_data(0x08);
+       distance_ir.distance_4 =3;//DS_get_data(0x08);
+       distance_ir.distance_5 =4;//DS_get_data(0x08);
+
             printf("*****I2C distancia******\n");
-            printf("sensor_addr: %g\n", v);
-            printf("*******************\n");*/
+            printf("sensor_addr: %d\n", distance_ir.distance_1);
+            printf("sensor_addr: %d\n", distance_ir.distance_2);
+            printf("sensor_addr: %d\n", distance_ir.distance_3);
+            printf("sensor_addr: %d\n", distance_ir.distance_4);
+            printf("sensor_addr: %d\n", distance_ir.distance_5);
+            printf("*******************\n");
+
+        xQueueReset(distance_send_evt_queue);
+        xQueueSendToFront(distance_send_evt_queue, (void *) &distance_ir,portMAX_DELAY );/* envia valor atual de count para fila*/
 
         xSemaphoreGive(print_mux);
         vTaskDelay((1000 * (task_idx + 1)) / portTICK_RATE_MS);
@@ -134,6 +160,7 @@ static void mcpwm_example_brushed_motor_control(void *arg)
 static void gpio_task_example(void* arg)
 {
     uint32_t io_num;
+    
         printf("gpio_task_example...\n");
 
     while (1) {
@@ -148,6 +175,9 @@ static void gpio_task_example(void* arg)
 static void adc_task(void *arg)
 {
 esp_adc_cal_characteristics_t *adc_chars;
+
+/*UBaseType_t uxHighWaterMark;
+uxHighWaterMark=uxTaskGetStackHighWaterMark(NULL); // se for null sera a task atual (memria livre para a task)*/
 
     //Check if Two Point or Vref are burned into eFuse
     check_efuse();
@@ -182,6 +212,11 @@ esp_adc_cal_characteristics_t *adc_chars;
         //Convert adc_reading to voltage in mV
         uint32_t voltage = esp_adc_cal_raw_to_voltage(adc_reading, adc_chars);
         printf("Raw: %d\tVoltage: %dmV\n", adc_reading, voltage);
+/*
+        printf("espaço da taskADC:");
+        printf(uxHighWaterMark);
+        printf("/n:");*/
+        
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 vTaskDelete(NULL);
@@ -319,17 +354,39 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
         esp_gatt_rsp_t rsp;
         memset(&rsp, 0, sizeof(esp_gatt_rsp_t));
         rsp.attr_value.handle = param->read.handle;
-        rsp.attr_value.len = 4;
-        rsp.attr_value.value[0] = 0xde;
-        rsp.attr_value.value[1] = 0xed;
-        rsp.attr_value.value[2] = 0xbe;
-        rsp.attr_value.value[3] = 0xef;
+        rsp.attr_value.len = 5;
+
+     struct  Sdistance distance_ir;
+    
+         if(xQueueReceive(distance_send_evt_queue, &distance_ir, portMAX_DELAY) == pdTRUE) //verifica se há valor na fila para ser lido. Espera 1 segundo
+         {
+         //imprimeSensorDisplay(valor_recebido);
+
+       rsp.attr_value.value[0]=(uint8_t)(distance_ir.distance_1);
+       rsp.attr_value.value[1]=(uint8_t)(distance_ir.distance_2); 
+       rsp.attr_value.value[2]=(uint8_t)(distance_ir.distance_3); 
+       rsp.attr_value.value[3]=(uint8_t)(distance_ir.distance_4); 
+       rsp.attr_value.value[4]=(uint8_t)(distance_ir.distance_5);
+
+          } else{
+           rsp.attr_value.value[0] = 0;
+           rsp.attr_value.value[1] = 0;
+           rsp.attr_value.value[2] = 0;
+           rsp.attr_value.value[3] = 0;
+           rsp.attr_value.value[4] = 0;
+             ESP_LOGI(GATTS_TAG, "get distance_send_evt_queue error");
+          }
+
         esp_ble_gatts_send_response(gatts_if, param->read.conn_id, param->read.trans_id,
                                     ESP_GATT_OK, &rsp);
         break;
     }
     case ESP_GATTS_WRITE_EVT: {
+        
         ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT, conn_id %d, trans_id %d, handle %d", param->write.conn_id, param->write.trans_id, param->write.handle);
+        
+       struct Sdistance distance_ir;
+
         if (!param->write.is_prep){
             ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT, value len %d, value :", param->write.len);
             esp_log_buffer_hex(GATTS_TAG, param->write.value, param->write.len);
@@ -338,11 +395,27 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
                 if (descr_value == 0x0001){
                     if (a_property & ESP_GATT_CHAR_PROP_BIT_NOTIFY){
                         ESP_LOGI(GATTS_TAG, "notify enable");
-                        uint8_t notify_data[15];
-                        for (int i = 0; i < sizeof(notify_data); ++i)
-                        {
-                            notify_data[i] = i%0xff;
-                        }
+                        uint8_t notify_data[5];
+    
+                    if(xQueueReceive(distance_send_evt_queue, &distance_ir, portMAX_DELAY) == pdTRUE) //verifica se há valor na fila para ser lido. Espera 1 segundo
+                    {
+                    //imprimeSensorDisplay(valor_recebido);
+
+                    notify_data[0]=(uint8_t)distance_ir.distance_1;
+                    notify_data[1]=(uint8_t)distance_ir.distance_2; 
+                    notify_data[2]=(uint8_t)distance_ir.distance_3; 
+                    notify_data[3]=(uint8_t)distance_ir.distance_4; 
+                    notify_data[4]=(uint8_t)distance_ir.distance_5;
+
+                    } else{
+
+                    notify_data[0] = 0;
+                    notify_data[1] = 0;
+                    notify_data[2] = 0;
+                    notify_data[3] = 0;
+                    notify_data[4] = 0;
+                        ESP_LOGI(GATTS_TAG, "get distance_send_evt_queue error");
+                    }  
                         //the size of notify_data[] need less than MTU size
                         esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, gl_profile_tab[PROFILE_A_APP_ID].char_handle,
                                                 sizeof(notify_data), notify_data, false);
@@ -350,11 +423,29 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
                 }else if (descr_value == 0x0002){
                     if (a_property & ESP_GATT_CHAR_PROP_BIT_INDICATE){
                         ESP_LOGI(GATTS_TAG, "indicate enable");
-                        uint8_t indicate_data[15];
-                        for (int i = 0; i < sizeof(indicate_data); ++i)
-                        {
-                            indicate_data[i] = i%0xff;
-                        }
+                        uint8_t indicate_data[5];
+                        
+                        
+                    if(xQueueReceive(distance_send_evt_queue, &distance_ir, portMAX_DELAY) == pdTRUE) //verifica se há valor na fila para ser lido. Espera 1 segundo
+                    {
+                    //imprimeSensorDisplay(valor_recebido);
+
+                    indicate_data[0]=(uint8_t)distance_ir.distance_1;
+                    indicate_data[1]=(uint8_t)distance_ir.distance_2; 
+                    indicate_data[2]=(uint8_t)distance_ir.distance_3; 
+                    indicate_data[3]=(uint8_t)distance_ir.distance_4; 
+                    indicate_data[4]=(uint8_t)distance_ir.distance_5;
+
+                    } else{
+
+                    indicate_data[0] = 0;
+                    indicate_data[1] = 0;
+                    indicate_data[2] = 0;
+                    indicate_data[3] = 0;
+                    indicate_data[4] = 0;
+                        ESP_LOGI(GATTS_TAG, "get distance_send_evt_queue error");
+                    }                             
+
                         //the size of indicate_data[] need less than MTU size
                         esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, gl_profile_tab[PROFILE_A_APP_ID].char_handle,
                                                 sizeof(indicate_data), indicate_data, true);
@@ -443,9 +534,9 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
         memcpy(conn_params.bda, param->connect.remote_bda, sizeof(esp_bd_addr_t));
         /* For the IOS system, please reference the apple official documents about the ble connection parameters restrictions. */
         conn_params.latency = 0;
-        conn_params.max_int = 0x20;    // max_int = 0x20*1.25ms = 40ms
-        conn_params.min_int = 0x10;    // min_int = 0x10*1.25ms = 20ms
-        conn_params.timeout = 400;    // timeout = 400*10ms = 4000ms
+        conn_params.max_int = 0x40;    // max_int = 0x20*1.25ms = 40ms
+        conn_params.min_int = 0x20;    // min_int = 0x10*1.25ms = 20ms
+        conn_params.timeout = 800;    // timeout = 400*10ms = 4000ms
         ESP_LOGI(GATTS_TAG, "ESP_GATTS_CONNECT_EVT, conn_id %d, remote %02x:%02x:%02x:%02x:%02x:%02x:",
                  param->connect.conn_id,
                  param->connect.remote_bda[0], param->connect.remote_bda[1], param->connect.remote_bda[2],
@@ -622,6 +713,9 @@ void app_main(void)
 {
     esp_err_t ret;
 
+   //create a queue to handle gpio event from isr
+    ble_recive_evt_queue = xQueueCreate(1, sizeof(uint32_t));
+    distance_send_evt_queue = xQueueCreate(10, sizeof( struct Sdistance* ));
 
     /************* i2c ***********/
     print_mux = xSemaphoreCreateMutex();
@@ -632,8 +726,9 @@ void app_main(void)
     DS_range(0x08,0x01);
 
     // Ds_change(0x01);
-    xTaskCreate(i2c_test_task, "i2c_test_task_0", 1024 * 2, (void *)0, 5, NULL);
-    
+   // xTaskCreate(i2c_test_task, "i2c_test_task", 1024 * 2, NULL, 1, &taskI2C);
+    xTaskCreatePinnedToCore(i2c_test_task, "i2c_test_task", 1024 * 2, NULL, 1, &taskI2C,1);
+
     /****************************/
 
 
@@ -656,25 +751,30 @@ void app_main(void)
    //create a queue to handle gpio event from isr
     gpio_evt_queue = xQueueCreate(10, sizeof(uint32_t));
     //start gpio task
-    xTaskCreate(gpio_task_example, "gpio_task_example", 2048, NULL, 10, NULL);
+   // xTaskCreate(gpio_task_example, "gpio_task_example", 2048, NULL, 1,  &taskGPIO);
+      xTaskCreatePinnedToCore(gpio_task_example, "gpio_task_example", 2048, NULL, 1,  &taskGPIO,1);
 
     /****************************/
 
 
     /************* PWM ***********/
     printf("Testing brushed motor...\n");
-    xTaskCreate(mcpwm_example_brushed_motor_control, "mcpwm_examlpe_brushed_motor_control", 4096, NULL, 4, NULL);
+   // xTaskCreate(mcpwm_example_brushed_motor_control, "mcpwm_examlpe_brushed_motor_control", 4096, NULL, 4,  &taskPWM);
+      xTaskCreatePinnedToCore(mcpwm_example_brushed_motor_control, "mcpwm_examlpe_brushed_motor_control", 4096, NULL, 4,  &taskPWM,1);
+
     /****************************/
 
 
     /************* ADC *************/
-    xTaskCreate(adc_task, "adc_task", 1024 * 2, (void *)0, 5, NULL);
+    //xTaskCreate(adc_task, "adc_task", 1024 * 2, (void *)0, 1,  &taskADC);
+    xTaskCreatePinnedToCore(adc_task, "adc_task", 1024 * 2, (void *)0, 1,  &taskADC,1);
     /****************************/
 
 
     /************* BLE ***********/
 
     ble_init();
+
 
     ret = esp_ble_gatts_register_callback(gatts_event_handler);
     if (ret){
