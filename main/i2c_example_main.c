@@ -156,17 +156,87 @@ static void mcpwm_example_brushed_motor_control(void *arg)
 {
     uint32_t gpio_num = (uint32_t) arg;
     xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
+
 }
+
+void vHandleKey( uint32_t xKeyPressed ) // Handle the key status
+{
+            printf("\n*******gpio_task_example***********\n");
+
+            printf ("*******************************************************Pressed %d***********", xKeyPressed);
+            printf("\n*******gpio_task_example***********\n");
+
+            // Ds_change(0x01);
+
+}
+
 static void gpio_task_example(void* arg)
 {
     uint32_t io_num;
-    
-        printf("gpio_task_example...\n");
+    bool debounce =1;
+    uint32_t  timerCounter=0;
+
+    TimeOut_t  xTimeOut;
+
+    bool xWaitDender = pdFALSE;
+    bool xLastKey = 0;
+    bool xReportedKey = 0;
+    bool xKeyPressed;
+    TickType_t xDenderTime;
+
+        printf("*******gpio_task_example***********\n");
+        
 
     while (1) {
+
+            xKeyPressed = gpio_get_level(io_num);
+
         if(xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
+
+            /*if(io_num==GPIO_INPUT_IO_0){
+
+            gpio_get_level(io_num);
+
+                        if(io_num==0){
+
+                        printf("*******GPIO_INPUT_IO_0*******\n");
+
+                        }
+            }*/
             printf("GPIO[%d] intr, val: %d\n", io_num, gpio_get_level(io_num));
+
+                if( xWaitDender == pdFALSE && xReportedKey != xKeyPressed )
+                {
+                    // We were not waiting for dender,
+                    // so report the new key status
+                    xReportedKey = xKeyPressed;
+                    vHandleKey( io_num );
+                }
+            
         }
+
+                        // Has the key value changed?
+                if( xLastKey != xKeyPressed )
+                {
+                    xLastKey = xKeyPressed;
+                    xDenderTime = 100;
+                    vTaskSetTimeOutState( &xTimeOut );
+                    xWaitDender = pdTRUE;
+                }
+                // Were we waiting for the dender?
+                else if( xWaitDender == pdTRUE )
+                {
+                    // See if the timer has expired
+                    if( xTaskCheckForTimeOut( &xTimeOut, &xDenderTime ) )
+                    {
+                        xWaitDender = pdFALSE;
+                        //printf("******* time out ***********\n");
+
+                    }
+                }
+
+             //printf ("****************xWaitDender %d***********", xWaitDender);
+
     }
 
     vTaskDelete(NULL);
@@ -203,7 +273,7 @@ uxHighWaterMark=uxTaskGetStackHighWaterMark(NULL); // se for null sera a task at
             if (unit == ADC_UNIT_1) {
                 adc_reading += adc1_get_raw((adc1_channel_t)channel);
             } else {
-                int raw;
+                int raw; 
                 adc2_get_raw((adc2_channel_t)channel, width, &raw);
                 adc_reading += raw;
             }
@@ -385,13 +455,18 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
         
         ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT, conn_id %d, trans_id %d, handle %d", param->write.conn_id, param->write.trans_id, param->write.handle);
         
-       struct Sdistance distance_ir;
-
         if (!param->write.is_prep){
             ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT, value len %d, value :", param->write.len);
             esp_log_buffer_hex(GATTS_TAG, param->write.value, param->write.len);
+            int valor = recebe_dado_ble(GATTS_TAG, param->write.value, param->write.len);
+             ESP_LOGI(GATTS_TAG, "**valor recebido %d",valor);
+            // xQueueOverwrite(ble_recive_evt_queue, &valor);/* envia valor atual de count para fila*/
+
             if (gl_profile_tab[PROFILE_A_APP_ID].descr_handle == param->write.handle && param->write.len == 2){
+                
                 uint16_t descr_value = param->write.value[1]<<8 | param->write.value[0];
+                struct Sdistance distance_ir;
+
                 if (descr_value == 0x0001){
                     if (a_property & ESP_GATT_CHAR_PROP_BIT_NOTIFY){
                         ESP_LOGI(GATTS_TAG, "notify enable");
@@ -424,7 +499,7 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
                     if (a_property & ESP_GATT_CHAR_PROP_BIT_INDICATE){
                         ESP_LOGI(GATTS_TAG, "indicate enable");
                         uint8_t indicate_data[5];
-                        
+                        struct Sdistance distance_ir;
                         
                     if(xQueueReceive(distance_send_evt_queue, &distance_ir, portMAX_DELAY) == pdTRUE) //verifica se há valor na fila para ser lido. Espera 1 segundo
                     {
@@ -715,6 +790,7 @@ void app_main(void)
 
    //create a queue to handle gpio event from isr
     ble_recive_evt_queue = xQueueCreate(1, sizeof(uint32_t));
+    ble_recive_evt_queue= xQueueCreate(1, sizeof(int));
     distance_send_evt_queue = xQueueCreate(10, sizeof( struct Sdistance* ));
 
     /************* i2c ***********/
@@ -725,7 +801,7 @@ void app_main(void)
 
     DS_range(0x08,0x01);
 
-    // Ds_change(0x01);
+    
    // xTaskCreate(i2c_test_task, "i2c_test_task", 1024 * 2, NULL, 1, &taskI2C);
     xTaskCreatePinnedToCore(i2c_test_task, "i2c_test_task", 1024 * 2, NULL, 1, &taskI2C,1);
 
@@ -737,8 +813,9 @@ void app_main(void)
     gpio_config_pin();
 
     //change gpio intrrupt type for one pin
-    gpio_set_intr_type(GPIO_INPUT_IO_0, GPIO_INTR_ANYEDGE);
-
+    gpio_set_intr_type(GPIO_INPUT_IO_0, GPIO_INTR_NEGEDGE);
+    gpio_set_intr_type(GPIO_INPUT_IO_1, GPIO_INTR_NEGEDGE);
+    
     //install gpio isr service
     gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
     //hook isr handler for specific gpio pin

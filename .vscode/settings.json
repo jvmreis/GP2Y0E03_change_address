@@ -25,6 +25,10 @@
     "xtree": "c",
     "xutility": "c",
     "pwm_motor.h": "c",
-    "mcpwm.h": "c"
+    "mcpwm.h": "c",
+    "functional": "c",
+    "optional": "c",
+    "system_error": "c",
+    "xtr1common": "c"
   }
 }

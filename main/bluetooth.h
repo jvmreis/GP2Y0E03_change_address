@@ -26,7 +26,7 @@ static void gatts_profile_b_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
 #define GATTS_SERVICE_UUID_TEST_A   0x00FF
 #define GATTS_CHAR_UUID_TEST_A      0xFF01
 #define GATTS_DESCR_UUID_TEST_A     0x3333
-#define GATTS_NUM_HANDLE_TEST_A     4
+#define GATTS_NUM_HANDLE_TEST_A     6
 
 #define GATTS_SERVICE_UUID_TEST_B   0x00EE
 #define GATTS_CHAR_UUID_TEST_B      0xEE01
@@ -40,7 +40,7 @@ static void gatts_profile_b_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
 
 #define PREPARE_BUF_MAX_SIZE 1024
 
-static uint8_t char1_str[] = {0x11,0x22,0x33};
+static uint8_t char1_str[] = {0x11,0x22,0x33,0x44,0x55,0x66};
 static esp_gatt_char_prop_t a_property = 0;
 static esp_gatt_char_prop_t b_property = 0;
 
@@ -81,8 +81,8 @@ static esp_ble_adv_data_t adv_data = {
     .set_scan_rsp = false,
     .include_name = true,
     .include_txpower = false,
-    .min_interval = 0x0006, //slave connection min interval, Time = min_interval * 1.25 msec
-    .max_interval = 0x0010, //slave connection max interval, Time = max_interval * 1.25 msec
+    .min_interval = 0x0010,//0x0006, //slave connection min interval, Time = min_interval * 1.25 msec //@TODO JV
+    .max_interval = 0x0100,//0x0010, //slave connection max interval, Time = max_interval * 1.25 msec//@TODO JV
     .appearance = 0x00,
     .manufacturer_len = 0, //TEST_MANUFACTURER_DATA_LEN,
     .p_manufacturer_data =  NULL, //&test_manufacturer[0],
@@ -113,7 +113,7 @@ static esp_ble_adv_data_t scan_rsp_data = {
 
 static esp_ble_adv_params_t adv_params = {
     .adv_int_min        = 0x20,
-    .adv_int_max        = 0x40,
+    .adv_int_max        = 0x100,//0x40,//@TODO JV
     .adv_type           = ADV_TYPE_IND,
     .own_addr_type      = BLE_ADDR_TYPE_PUBLIC,
     //.peer_addr            =
@@ -153,3 +153,4 @@ static prepare_type_env_t b_prepare_write_env;
 void example_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param);
 void example_exec_write_event_env(prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param);
 void ble_init(void);
+int recebe_dado_ble(const char *tag, const void *buffer, uint16_t buff_len);

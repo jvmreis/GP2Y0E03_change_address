@@ -114,3 +114,41 @@ void ble_init(void)
         return;
     }
 }
+
+int recebe_dado_ble(const char *tag, const void *buffer, uint16_t buff_len)
+{
+    if (buff_len == 0) {
+        return;
+    }
+    char temp_buffer[16 + 3]= { 0 }; //for not-byte-accessible memory
+    char char_buffer[16 + 1]= { 0 };
+    const char *ptr_line;
+    int bytes_cur_line;
+
+    do {
+        if (buff_len > 16) {
+            bytes_cur_line = 16;
+        } else {
+            bytes_cur_line = buff_len;
+        }
+        if (!esp_ptr_byte_accessible(buffer)) {
+            //use memcpy to get around alignment issue
+            memcpy(temp_buffer, buffer, (bytes_cur_line + 3) / 4 * 4);
+            ptr_line = temp_buffer;
+        } else {
+            ptr_line = buffer;
+        }
+
+        for (int i = 0; i < bytes_cur_line; i ++) {
+            sprintf(char_buffer + i, "%c", ptr_line[i]);
+        }
+        ESP_LOGE( tag, "%s", char_buffer);
+        buffer += bytes_cur_line;
+        buff_len -= bytes_cur_line;
+    } while (buff_len);
+
+            int valor = atoi(ptr_line);
+
+            ESP_LOGI(tag, "valor recebido %d",valor);
+            return valor;
+}
