@@ -15,7 +15,7 @@
 #define ACK_VAL 0x0                             /*!< I2C ack value */
 #define NACK_VAL 0x1                            /*!< I2C nack value */
 
-#define GP2Y0E          0x40//default
+#define GP2Y0E          0x10//default
 #define SHIFT_BYTE      0x02 //64 cm shift = 2 128 cm shift = 1
 #define SHIFT_ADDR      0x35
 #define DISTANCE_ADDR1  0x5E
@@ -27,22 +27,30 @@
 #define E_FUSE_ADDR  0xC8 
 #define VDD_PIN 22
 #define DEBUG_I2C 0
+#define GPIO1 4
+#define VIN_IO 23
+
 
 void DS_init(char sladress);    
 float DS_get_data(char sladress);    
-void Ds_change( uint8_t new_address);
-void DS_range(char adress,char distance);
+//void Ds_change( uint8_t new_address,uint8_t current_address);
+void Ds_change(uint8_t new_address);
+void DS_read_regs(void);
 
-    struct Sdistance
+void DS_range(char adress,char distance);
+int DS_find_adress(void);
+void Ds_find_and_change(uint8_t new_address);
+void DS_write_config(char adress);
+
+typedef struct
 {
         uint8_t distance_1;
         uint8_t distance_2;
         uint8_t distance_3;
         uint8_t distance_4;
         uint8_t distance_5;
-        uint8_t distance_6;
 
-};
+} Sdistance;
 
 #ifdef	__cplusplus
 }

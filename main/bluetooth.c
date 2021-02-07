@@ -152,3 +152,11 @@ int recebe_dado_ble(const char *tag, const void *buffer, uint16_t buff_len)
             ESP_LOGI(tag, "valor recebido %d",valor);
             return valor;
 }
+//SemaphoreHandle_t done 
+/*
+void teste(Strategy_number *Strategy){
+    xSemaphoreTake(myMutex,portMAX_DELAY);
+    strategy_global = Strategy;
+    serial.println(strategy_global);
+    xSemaphoreGive(myMutex);
+}*/

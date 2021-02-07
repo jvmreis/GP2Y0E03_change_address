@@ -14,23 +14,22 @@ void DS_init(char sladress)
     char buffer[12] = {};
     //Funcion de configuracion o de escritura de registro
     //I2C_Start();
-     gpio_reset_pin(VDD_PIN);
+    gpio_reset_pin(VDD_PIN);
     /* Set the GPIO as a push/pull output */
-     gpio_set_direction(VDD_PIN, GPIO_MODE_OUTPUT);
-     gpio_set_level(VDD_PIN, 1);//0
+    gpio_set_direction(VDD_PIN, GPIO_MODE_OUTPUT);
+    gpio_set_level(VDD_PIN, 1); //0
 
-     gpio_reset_pin(23);
+    gpio_reset_pin(23);
     /* Set the GPIO as a push/pull output */
-     gpio_set_direction(23, GPIO_MODE_OUTPUT);
-     gpio_set_level(23, 1);//0
+    gpio_set_direction(23, GPIO_MODE_OUTPUT);
+    gpio_set_level(23, 1); //0
 
-
-     gpio_reset_pin(4);
+    gpio_reset_pin(4);
     /* Set the GPIO as a push/pull output */
-     gpio_set_direction(4, GPIO_MODE_OUTPUT);
-     gpio_set_level(4, 1);//0
-   // VDAC8_Start();
-   // VDAC8_SetValue(0);
+    gpio_set_direction(4, GPIO_MODE_OUTPUT);
+    gpio_set_level(4, 1); //0
+                          // VDAC8_Start();
+                          // VDAC8_SetValue(0);
     /*     DS_beginwrite(sladress);
     I2C_MasterWriteByte(SHIFT_ADDR);//Pone direccion de memoria que quiere leer 
     I2C_MasterSendStop(); 
@@ -45,41 +44,51 @@ char DS_read(uint8_t sensor_addr, uint8_t reg_addr)
     uint8_t data = 0;
     int32_t ret;
 
-  ret = i2c_esp32_read(I2C_MASTER_NUM , sensor_addr, reg_addr, &data,1);
+    ret = i2c_esp32_read(I2C_MASTER_NUM, sensor_addr, reg_addr, &data, 1);
 
 #if DEBUG_I2C
-         if (ret == ESP_ERR_TIMEOUT) {
-            printf("I2C Timeout");
-        } else if (ret == ESP_OK) {
+    if (ret == ESP_ERR_TIMEOUT)
+    {
+        printf("I2C Timeout");
+    }
+    else if (ret == ESP_OK)
+    {
 
-            printf("*******I2C read********\n");
-            printf("sensor_addr: %02x reg_addr: %02x  data: %02x\n", sensor_addr,reg_addr,data);
-            printf("*******************\n");
-        } else {
-            printf( " No ack, sensor not connected...skip...\n");
-        }
+        printf("*******I2C read********\n");
+        printf("sensor_addr: %02x reg_addr: %02x  data: %02x\n", sensor_addr, reg_addr, data);
+        printf("*******************\n");
+    }
+    else
+    {
+        printf(" No ack, sensor not connected...skip...\n");
+    }
 #endif DEBUG_I2C
     return data;
 } //adress es el slave adress del dispositivo, leer es la direccion del registro que se desea ver
 
-void DS_write(uint8_t sensor_addr, uint8_t reg_addr, uint8_t  reag_data)
+void DS_write(uint8_t sensor_addr, uint8_t reg_addr, uint8_t reag_data)
 {
-     int32_t ret;
-  
-ret = i2c_esp32_write(I2C_MASTER_NUM, sensor_addr, reg_addr, reag_data, 1);
+    int32_t ret;
 
-//#if DEBUG_I2C
-         if (ret == ESP_ERR_TIMEOUT) {
-            printf( "I2C Timeout\n");
-        } else if (ret == ESP_OK) {
+    ret = i2c_esp32_write(I2C_MASTER_NUM, sensor_addr, reg_addr, reag_data, 1);
 
-            printf("*****I2C write******\n");
-            printf("sensor_addr: %02x reg_addr: %02x\n", sensor_addr,reg_addr);
-            printf("*******************\n");
-        } else {
-            printf( " No ack, sensor not connected...skip...\n");
-        }
- //#endif DEBUG_I2C
+    //#if DEBUG_I2C
+    if (ret == ESP_ERR_TIMEOUT)
+    {
+        printf("I2C Timeout\n");
+    }
+    else if (ret == ESP_OK)
+    {
+
+        printf("*****I2C write******\n");
+        printf("sensor_addr: %02x reg_addr: %02x\n", sensor_addr, reg_addr);
+        printf("*******************\n");
+    }
+    else
+    {
+        printf(" No ack, sensor not connected...skip...\n");
+    }
+    //#endif DEBUG_I2C
 }
 
 void e_fuse_stage1()
@@ -87,7 +96,6 @@ void e_fuse_stage1()
     DS_write(GP2Y0E, 0xEC, 0xFF);
     //VDAC8_SetValue(206);
     gpio_set_level(VDD_PIN, 1);
-
 }
 
 /*
@@ -121,6 +129,7 @@ void e_fuse_stage3()
  */
 void e_fuse_stage4(uint8_t new_address)
 {
+    DS_write_config(GP2Y0E);
 
     DS_write(GP2Y0E, 0xCD, new_address);
 }
@@ -150,7 +159,6 @@ void e_fuse_stage6()
     DS_write(GP2Y0E, 0xCA, 0x00);
     //VDAC8_SetValue(0);
     gpio_set_level(VDD_PIN, 0);
-
 }
 
 /*
@@ -192,7 +200,7 @@ void e_fuse_stage8()
  */
 uint8_t e_fuse_stage9()
 {
-
+/*
     // Table.20 List of E-Fuse program flow and setting value
     DS_write(GP2Y0E, 0xEF, 0x00); // add this though it's missing in 12-6 Example of E-Fuse Programming
     DS_write(GP2Y0E, 0xEC, 0xFF);
@@ -210,7 +218,26 @@ uint8_t e_fuse_stage9()
     else
     {
         return 0;
+    }*/
+
+        // Table.20 List of E-Fuse program flow and setting value
+    DS_write(GP2Y0E, 0xEC, 0xFF); // add this though it's missing in 12-6 Example of E-Fuse Programming
+    DS_write(GP2Y0E, 0xEF, 0x03);
+    uint8_t check_value = DS_read(GP2Y0E, 0x27);
+    uint8_t check = check_value & 0x1f;
+    // When lower 5bits data[4:0] is 00001, E-Fuse program is finished.
+    // When lower 5bits data[4:0] is not 00001, go to stage10(bit replacement).
+    DS_write(GP2Y0E, 0xEF, 0x00);
+    DS_write(GP2Y0E, 0xEC, 0x7F);
+    if (check == 0b00000001)
+    {
+        return 1;
     }
+    else
+    {
+        return 0;
+    }
+
 }
 
 void e_fuse_stage10_1_1()
@@ -219,7 +246,6 @@ void e_fuse_stage10_1_1()
     //VDAC8_SetValue(206);
     //_vpp_on();
     gpio_set_level(VDD_PIN, 1);
-
 }
 
 /*
@@ -280,8 +306,7 @@ void e_fuse_stage10_6_1()
     DS_write(GP2Y0E, 0xCA, 0x00);
     //VDAC8_SetValue(0);
     //_vpp_off();
-   gpio_set_level(VDD_PIN, 0);
-
+    gpio_set_level(VDD_PIN, 0);
 }
 
 /*
@@ -297,7 +322,6 @@ void e_fuse_stage10_1_2()
     //VDAC8_SetValue(206);
     //_vpp_on();
     gpio_set_level(VDD_PIN, 1);
-
 }
 
 /*
@@ -359,7 +383,6 @@ void e_fuse_stage10_6_2()
     DS_write(GP2Y0E, 0xCA, 0x00);
     //VDAC8_SetValue(0);
     gpio_set_level(VDD_PIN, 0);
-
 }
 
 /*
@@ -399,8 +422,8 @@ void e_fuse_stage10_9()
     //char buffer[255] = {};
     DS_write(GP2Y0E, 0xEC, 0xFF);
     DS_write(GP2Y0E, 0xEF, 0x03);
-     uint8_t bit_replacemnt_18 = DS_read(GP2Y0E, 0x18);
-     uint8_t bit_replacemnt_19 = DS_read(GP2Y0E, 0x19);
+    uint8_t bit_replacemnt_18 = DS_read(GP2Y0E, 0x18);
+    uint8_t bit_replacemnt_19 = DS_read(GP2Y0E, 0x19);
     //sprintf(buffer, "Check 0x18 => %d\r\n", bit_replacemnt_18);
     printf("Check 0x18 => %d\r\n", bit_replacemnt_18);
     //sprintf(buffer, "Check 0x19 => %d\r\n", bit_replacemnt_19);
@@ -412,8 +435,8 @@ void e_fuse_stage10_9()
     }
     else
     {
-       // sprintf(buffer, "Bit Replacement (stage 10) is FAILURE\r\n");
-        printf( "Bit Replacement (stage 10) is FAILURE\r\n");
+        // sprintf(buffer, "Bit Replacement (stage 10) is FAILURE\r\n");
+        printf("Bit Replacement (stage 10) is FAILURE\r\n");
     }
 }
 
@@ -474,36 +497,141 @@ void Ds_change(uint8_t new_address)
 
     printf(buffer);
 }
- 
+
 float DS_get_data(char sladress)
 {
-    
-     int distance_cm,shift_dist, datai2c[2] = {0, 0};
+
+    int distance_cm, shift_dist, datai2c[2] = {0, 0};
     float distance_cm2;
-  
+
     datai2c[0] = DS_read(sladress, DISTANCE_ADDR1);
     datai2c[1] = DS_read(sladress, DISTANCE_ADDR2);
     shift_dist = DS_read(sladress, 0x35);
-    distance_cm2 = (datai2c[0] * 16 + datai2c[1]) /16/2^shift_dist; //calculo de distancia
-      //(((uint16_t) data[0] << 4) + (data[1] & 0x0f)) / 16 / 4;
-
-          /*  printf("*****I2C distancia******\n");
+    distance_cm2 = (datai2c[0] * 16 + datai2c[1]) / 16 / 4; //calculo de distancia
+    //distance_cm2 = (((uint16_t) datai2c[0] << 4) + (datai2c[1] & 0x0f)) / 16 / 4;
+    /*  printf("*****I2C distancia******\n");
             printf("sensor_addr: %f\n", distance_cm2);
             printf("*******************\n");*/
     return distance_cm2;
-    
 }
 void DS_range(char adress, char distance)
 {
     //DS_write( adress,  SHIFT_ADDR,  0x01);
 
-    if (distance == 0x01)// 128cm
+    if (distance == 0x01) // 128cm
     {
-    DS_write( adress,  SHIFT_ADDR,  0x01);
+        DS_write(adress, SHIFT_ADDR, 0x01);
     }
-    else// 64 cm
+    else // 64 cm
     {
-    DS_write( adress,  SHIFT_ADDR,  0x02);
+        DS_write(adress, SHIFT_ADDR, 0x02);
     }
- 
-} 
+}
+
+int DS_find_adress(void)
+{
+
+    int val;
+    for (int adreess_cont = 0; adreess_cont < 16; adreess_cont++)
+    {
+
+        val = DS_read(((adreess_cont * 8)), 0xC8);
+
+        printf("procurando: %x\n", (adreess_cont * 8));
+
+        if (val == 0x80)
+        {
+            printf("*****adress found******\n");
+            printf("adreess_cont: %x\n", (adreess_cont * 8));
+            printf("*******************\n");
+
+            return (adreess_cont * 8);
+        }
+        vTaskDelay(100 / portTICK_RATE_MS);
+    }
+    return 0;
+}
+
+void DS_read_regs(void)
+{
+
+    int val;
+    printf("DS_read_regs:\n");
+
+    for (int adreess_cont = 1; adreess_cont < 0xff; adreess_cont++)
+    {
+
+        val = DS_read(0x40, adreess_cont);
+
+        printf("0x%.2x , 0x%.2x\n", adreess_cont, val);
+
+        vTaskDelay(100 / portTICK_RATE_MS);
+    }
+    return 0;
+}
+
+void DS_write_config(char adress)
+{
+    //DS_write( adress,  SHIFT_ADDR,  0x01);
+    DS_write(adress, 0x13, 0x07); //Maximum Emitting Pulse Width
+        vTaskDelay(100 / portTICK_RATE_MS);
+
+    DS_write(adress, 0x35, 0x02); //Shift Bit
+        vTaskDelay(100 / portTICK_RATE_MS);
+
+    DS_write(adress, 0x3F, 0x30); //Median Filter
+        vTaskDelay(100 / portTICK_RATE_MS);
+
+    DS_write(adress, 0x8D, 0x00); //Cover Compensation[5:0]
+        vTaskDelay(100 / portTICK_RATE_MS);
+
+    DS_write(adress, 0x8E, 0x00); //Cover Compensation[10:6]
+        vTaskDelay(100 / portTICK_RATE_MS);
+
+    DS_write(adress, 0x8F, 0x03); //Cover Compensation Enable Bit
+        vTaskDelay(100 / portTICK_RATE_MS);
+
+    DS_write(adress, 0x90, 0x00); //Read out Image Sensor Data
+        vTaskDelay(100 / portTICK_RATE_MS);
+
+    DS_write(adress, 0xA8, 0x03); //Signal Accumulation Number
+        vTaskDelay(100 / portTICK_RATE_MS);
+
+    DS_write(adress, 0xBC, 0x00); //Enable Bit (Signal Intensity)
+        vTaskDelay(100 / portTICK_RATE_MS);
+
+    DS_write(adress, 0xBD, 0x00); //Enable Bit (Minimum spot size)
+        vTaskDelay(100 / portTICK_RATE_MS);
+
+    DS_write(adress, 0xBE, 0x01); //Enable Bit(Maximum spot size)
+        vTaskDelay(100 / portTICK_RATE_MS);
+
+    DS_write(adress, 0xBf, 0x00); //Enable Bit(Maximum spot size)
+        vTaskDelay(100 / portTICK_RATE_MS);
+
+    //DS_write(adress, 0xEC, 0x7F); //Enable Bit(Maximum spot size)
+
+}
+
+/*
+int DS_find_cofiguration(adress){
+int val;
+    for(int adreess_cont=0;adreess_cont<16;adreess_cont++){
+
+     val= DS_read(((adreess_cont*8)), 0xC8);
+
+        printf("procurando: %x\n", (adreess_cont*8));
+
+     if(val==0x80){
+            printf("*****adress found******\n");
+            printf("adreess_cont: %x\n", (adreess_cont*8));
+            printf("*******************\n");
+
+            return (adreess_cont*8);
+     }
+        vTaskDelay(1000 / portTICK_RATE_MS);
+
+    }
+   return 0;
+
+}*/
