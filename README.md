@@ -1,19 +1,16 @@
-# I2C Self-Test Example
-
-(See the README.md file in the upper level 'examples' directory for more information about examples.)
+#  GP2Y0E0 configuration with I2C Example using ESP32
 
 ## Overview
 
-This example demonstrates basic usage of I2C driver by running two tasks on I2C bus:
+This example demonstrates I2C GP2Y0E0 configuration to change I2c addres and read distance value:
 
 1. Read external I2C sensor, here we take the GP2Y0E03 distance sensor  for an example.
-
 
 ## How to use example
 
 ### Hardware Required
 
-To run this example, you should have one ESP32 dev board (e.g. ESP32-WROVER Kit) or ESP32 core board (e.g. ESP32-DevKitC). Optionally, you can also connect an external sensor, here we choose the GP2Y0E03 just for an example. BH1750 is a digital ambient light sensor, for more information about it, you can read the [PDF](http://rohmfs.rohm.com/en/products/databook/datasheet/ic/sensor/light/bh1721fvc-e.pdf) of this sensor.
+To run this example, you should have one ESP32 dev board (e.g. ESP32-WROVER Kit) or ESP32 core board (e.g. ESP32-DevKitC). Optionally, you can also connect an external sensor, here we choose the GP2Y0E03 just for an example. GP2Y0E03 is a GP2Y0E03 is a ir distance measuring sensor, for more information about it, you can read the [PDF](https://global.sharp/products/device-china/lineup/data/pdf/datasheet/gp2y0e03_e.pdf) of this sensor.
 
 #### Pin Assignment:
 
@@ -36,8 +33,6 @@ To run this example, you should have one ESP32 dev board (e.g. ESP32-WROVER Kit)
 ### Configure the project
 
 Open the project configuration menu (`idf.py menuconfig`). Then go into `Example Configuration` menu.
-
-
 
 ### Build and Flash
 
